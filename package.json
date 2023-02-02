@@ -1,0 +1,23 @@
+{
+  "name": "twitter-manual-api",
+  "version": "1.0.0",
+  "description": "A replacement for the official twitter API.  Functions by using headless browsers to \"manually\" perform actions",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/scott-rothman/twitter-manual-api.git"
+  },
+  "author": "Scott Rothman",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/scott-rothman/twitter-manual-api/issues"
+  },
+  "homepage": "https://github.com/scott-rothman/twitter-manual-api#readme",
+  "devDependencies": {
+    "puppeteer": "^19.6.3"
+  }
+}
