@@ -1,5 +1,6 @@
 import * as readline from 'node:readline/promises';
 import { stdin as input, stdout as output } from 'node:process';
+import * as fs from 'node:fs';
 import puppeteer from 'puppeteer';
 console.log('Imports done...');
 
@@ -10,11 +11,12 @@ const LOGIN_URL = 'https://twitter.com/i/flow/login';
 /* Global Vars */
 let isLoggedIn = false;
 
-console.log('Constants initialized...');
 
 (async () => {
-    const [browser, page] = await initializeConnection();
+    // const [browser, page] = await initializeConnection();
     console.log('Connection initalized...');
+
+    await getUserAction();
 
     if (!isLoggedIn) {
         await login(browser, page);
@@ -25,6 +27,20 @@ console.log('Constants initialized...');
 
     await createTextTweet(browser, page);
 })();
+
+function getUserAction() {
+    return new Promise(async (resolve) => {
+        const rl = readline.createInterface({input, output});
+
+        console.log('Select an automation: \n\n 1. Text post \n 2. Photo post');
+        const userSelection = await rl.question('(1 or 2): ');
+        if (userSelection === '1') {
+            initializeTextPosts();
+        } else if (userSelection === '2'){
+
+        }
+    });
+}
 
 function initializeConnection() {
     return new Promise(async (resolve) => {
@@ -101,4 +117,22 @@ function createTextTweet(browser, page, tweetText = '') {
             await submitTweetButton.click();
         }, 5000);
     });
+}
+
+async function initializeTextPosts() {
+    const rl = readline.createInterface({input, output});
+    const postFrequency = await rl.question('Frequency of posts (in minutes): ');
+
+    const files = fs.readdirSync('./text_posts/new', {
+        withFileTypes: false
+    });
+    
+    files.sort((a, b) => {
+        return fs.statSync(`./text_posts/new/${a}`).mtime.getTime() - fs.statSync(`./text_posts/new/${b}`).mtime.getTime();
+    });
+
+    files.forEach((file) => {
+        console.log(file);
+    });
+
 }
