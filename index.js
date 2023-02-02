@@ -1,32 +1,75 @@
+import * as readline from 'node:readline/promises';
+import { stdin as input, stdout as output } from 'node:process';
 import puppeteer from 'puppeteer';
+console.log('Imports done...');
 
-console.log('Imports done');
+const LOGIN_URL = 'https://twitter.com/i/flow/login';
 
-async(() { 
-    const LOGIN_URL = 'https://twitter.com/i/flow/login';
-    const USERNAME_INPUT_SELECTOR = 'input[name="text"]'
+const USERNAME_INPUT_SELECTOR = 'input[name="text"]';
+const USERNAME_PASSWORD_SELECTOR = 'input[name="password"]';
 
-    const browser = await puppeteer.launch({
-        headless: false,
+const USERNAME = '';
+const PASSWORD = '';
+console.log('Constants initialized...');
+
+
+(async () => {
+
+    const [browser, page] = await initializeConnection();
+
+    await login(browser, page);
+})();
+
+function initializeConnection() {
+    return new Promise(async (resolve) => {
+        const browser = await puppeteer.launch({
+            headless: false,
+        });
+        console.log('Browser loaded...');
+    
+        const page = await browser.newPage();
+        console.log('Page loaded...');
+        
+        const toResolve = [browser, page];
+        resolve(toResolve);
     });
-    const page = await browser.newPage();
+}
 
-    console.log('Browser loaded...');
+function login(browser, page) {
+    return new Promise(async (resolve, reject) => {
+        const rl = readline.createInterface({input, output})
+        const USERNAME = await rl.question('username: ');
+        const PASSWORD = await rl.question('pass: ');
 
-    await page.goto(TWITTER_LOGIN_URL);
 
-    console.log('Twitter loaded...');
+        console.log('Logging in...');
 
-    const usernameInput = await page.waitForSelector(USERNAME_INPUT_SELECTOR);
-    usernameInput.click();
-    usernameInput.type('USERNAME HERE');
+        await page.goto(LOGIN_URL);
+        console.log('Twitter loaded...');
 
-    const firstLoginbutton = await page.waitForSelector('text/Next');
-    firstLoginbutton.click();
+        const usernameInput = await page.waitForSelector(USERNAME_INPUT_SELECTOR);
+        await usernameInput.click();
+        await usernameInput.type(USERNAME);
 
-    console.log(firstLoginbutton);
+        const firstLoginbutton = await page.waitForSelector('text/Next');
+        await firstLoginbutton.click();
 
-    await browser.close();
+        const passwordInput = await page.waitForSelector(USERNAME_PASSWORD_SELECTOR);
+        await passwordInput.type(PASSWORD);
 
-});
+        const secondLoginButton = await page.waitForSelector('text/Log in');
+        await secondLoginButton.click();
 
+        await browser.waitForTarget((target) => {
+            target.url() === 'https://twitter.com/home';
+        });
+
+        resolve();
+    });
+}
+
+function createTextTweet(browser, page) {
+    return new Promise(async (resolve) => {
+        resolve();
+    });
+}
