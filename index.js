@@ -3,19 +3,25 @@ import { stdin as input, stdout as output } from 'node:process';
 import puppeteer from 'puppeteer';
 console.log('Imports done...');
 
+/** Constants */
+const COMPOSE_TWEET_URL = 'https://twitter.com/compose/tweet';
 const LOGIN_URL = 'https://twitter.com/i/flow/login';
+
+/* Global Vars */
+let isLoggedIn = false;
 
 console.log('Constants initialized...');
 
-
 (async () => {
-
     const [browser, page] = await initializeConnection();
-
     console.log('Connection initalized...');
 
-    await login(browser, page);
-    console.log('Login successful...');
+    if (!isLoggedIn) {
+        await login(browser, page);
+        console.log('Login successful...');
+    } else {
+        console.log('Already logged in...');
+    }
 
     await createTextTweet(browser, page);
 })();
@@ -29,8 +35,19 @@ function initializeConnection() {
     
         const page = await browser.newPage();
         
-        const toResolve = [browser, page];
-        resolve(toResolve);
+        await page.goto(COMPOSE_TWEET_URL);
+        await page.waitForNetworkIdle();
+        await browser.waitForTarget((target) => {
+            if (target.url() === LOGIN_URL) {
+                isLoggedIn = false;
+                const toResolve = [browser, page];
+                resolve(toResolve);
+            } else if (target.url() === COMPOSE_TWEET_URL) {
+                isLoggedIn = true;
+                const toResolve = [browser, page];
+                resolve(toResolve);
+            }
+        });
     });
 }
 
@@ -59,32 +76,29 @@ function login(browser, page) {
 
         console.log('checking page target');
         await browser.waitForTarget((target) => {
+            console.log(target.url());
             if (target.url() === 'https://twitter.com/home') {
                 resolve();
             }
-        });
+        }, 1000);
     });
 }
 
-function createTextTweet(browser, page) {
+function createTextTweet(browser, page, tweetText = '') {
     return new Promise(async (resolve) => {
         setTimeout(async () => {
-            console.log('Step 0');
+            if (tweetText.length <= 0) {
+                tweetText = 'Sample data for automated tweet sans api';
+            }
             const tweetButton = await page.waitForSelector('[data-testid="SideNav_NewTweet_Button"]');
-            console.log('Step 1');
             await tweetButton.click();
-            console.log('Step 1.5');
 
             const tweetTextField = await page.waitForSelector('.public-DraftEditor-content');
             await tweetTextField.click();
-            console.log('Step 2');
-            await tweetTextField.type('This tweet was sent automatically without using the twitter api');
-            console.log('Step 3');
+            await tweetTextField.type(tweetText);
 
             const submitTweetButton = await page.waitForSelector('[data-testid="tweetButton"]');
-            console.log('Step 4');
             await submitTweetButton.click();
-            console.log('Step 5');
         }, 5000);
     });
 }
