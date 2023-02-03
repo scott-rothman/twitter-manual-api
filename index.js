@@ -72,6 +72,8 @@ function initializeConnection() {
                 const toResolve = [browser, page];
                 resolve(toResolve);
             }
+        }, {
+            timeout: 0
         });
     });
 }
