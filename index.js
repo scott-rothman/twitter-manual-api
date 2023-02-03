@@ -116,20 +116,21 @@ function login(browser, page) {
 
 function createTextTweet(browser, page, tweetText = '') {
     return new Promise(async (resolve) => {
-        setTimeout(async () => {
-            if (tweetText.length <= 0) {
-                tweetText = 'Sample data for automated tweet sans api';
-            }
-            const tweetButton = await page.waitForSelector('[data-testid="SideNav_NewTweet_Button"]');
-            await tweetButton.click();
+        if (tweetText.length <= 0) {
+            tweetText = 'Sample data for automated tweet sans api';
+        }
+        const tweetButton = await page.waitForSelector('[data-testid="SideNav_NewTweet_Button"]');
+        await tweetButton.click();
 
-            const tweetTextField = await page.waitForSelector('.public-DraftEditor-content');
-            await tweetTextField.click();
-            await tweetTextField.type(tweetText);
+        const tweetTextField = await page.waitForSelector('.public-DraftEditor-content');
+        await tweetTextField.click();
+        await tweetTextField.type(tweetText);
 
-            const submitTweetButton = await page.waitForSelector('[data-testid="tweetButton"]');
-            await submitTweetButton.click();
-        }, 5000);
+        const submitTweetButton = await page.waitForSelector('[data-testid="tweetButton"]');
+        await submitTweetButton.click();
+
+        await page.waitForNetworkIdle();
+        resolve();
     });
 }
 
@@ -153,6 +154,8 @@ async function generateTextPostCB(browser, page) {
 
     const tweetText = await fsp.readFile(`./text_posts/new/${files[0]}`, {encoding: 'utf8'});
 
+    await createTextTweet(browser, page, tweetText);
+
     const oldFilePath = `./text_posts/new/${files[0]}`;
     const newFilePath = `./text_posts/posted/${files[0]}`
     console.log(oldFilePath, newFilePath);
@@ -161,30 +164,27 @@ async function generateTextPostCB(browser, page) {
             console.log('twas an err', err);
         }
     });
-
-    await createTextTweet(browser, page, tweetText);
 }
 
 function createPhotoTweet(browser, page, imagePath) {
     return new Promise(async (resolve) => {
-        setTimeout(async () => {
-            if (tweetText.length <= 0) {
-                tweetText = 'Sample data for automated tweet sans api';
-            }
-            const tweetButton = await page.waitForSelector('[data-testid="SideNav_NewTweet_Button"]');
-            await tweetButton.click();
 
-            const uploadPhotoButton = await page.waitForSelector('aria/Add photos or video');
-            const [photoFileChooser] = await Promise.all([
-                page.waitForFileChooser(),
-                uploadPhotoButton.click(),
-            ]);
+        const tweetButton = await page.waitForSelector('[data-testid="SideNav_NewTweet_Button"]');
+        await tweetButton.click();
 
-            await photoFileChooser.accept([imagePath]);
+        const uploadPhotoButton = await page.waitForSelector('aria/Add photos or video');
+        const [photoFileChooser] = await Promise.all([
+            page.waitForFileChooser(),
+            uploadPhotoButton.click(),
+        ]);
 
-            const submitTweetButton = await page.waitForSelector('[data-testid="tweetButton"]');
-            await submitTweetButton.click();
-        }, 5000);
+        await photoFileChooser.accept([imagePath]);
+
+        const submitTweetButton = await page.waitForSelector('[data-testid="tweetButton"]');
+        await submitTweetButton.click();
+
+        await page.waitForNetworkIdle();
+        resolve();
     });
 }
 
@@ -210,11 +210,14 @@ async function generatePhotoPostCB(browser, page) {
     const oldFilePath = `./image_posts/new/${files[0]}`;
     const newFilePath = `./image_posts/posted/${files[0]}`
     console.log(oldFilePath, newFilePath);
+
+    console.log('posting!');
+    await createPhotoTweet(browser, page, oldFilePath);
+
+    console.log('renaming!');
     fs.rename(oldFilePath, newFilePath, (err) => {
         if (err) {
             console.log('twas an err', err);
         }
     });
-
-    await createPhotoTweet(browser, page, oldFilePath);
 }
