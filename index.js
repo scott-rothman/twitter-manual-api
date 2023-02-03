@@ -1,11 +1,13 @@
 import * as readline from 'node:readline/promises';
 import { stdin as input, stdout as output } from 'node:process';
 import * as fs from 'node:fs';
+import * as fsp from 'node:fs/promises';
 import puppeteer from 'puppeteer';
+import { resolve } from 'node:path';
 console.log('Imports done...');
 
 /** Constants */
-const COMPOSE_TWEET_URL = 'https://twitter.com/compose/tweet';
+const COMPOSE_TWEET_URL = 'https://twitter.com/home';
 const LOGIN_URL = 'https://twitter.com/i/flow/login';
 
 /* Global Vars */
@@ -13,10 +15,8 @@ let isLoggedIn = false;
 
 
 (async () => {
-    // const [browser, page] = await initializeConnection();
+    const [browser, page] = await initializeConnection();
     console.log('Connection initalized...');
-
-    await getUserAction();
 
     if (!isLoggedIn) {
         await login(browser, page);
@@ -25,7 +25,13 @@ let isLoggedIn = false;
         console.log('Already logged in...');
     }
 
-    await createTextTweet(browser, page);
+    let selectedAction = await getUserAction();
+
+    switch (selectedAction) {
+        case 'text':
+            initializeTextPosts(browser, page);
+            break;
+    }
 })();
 
 function getUserAction() {
@@ -35,10 +41,13 @@ function getUserAction() {
         console.log('Select an automation: \n\n 1. Text post \n 2. Photo post');
         const userSelection = await rl.question('(1 or 2): ');
         if (userSelection === '1') {
-            initializeTextPosts();
+            rl.close();
+            resolve('text');
         } else if (userSelection === '2'){
-
+            rl.close();
+            resolve('photos')
         }
+
     });
 }
 
@@ -76,6 +85,8 @@ function login(browser, page) {
         const PASSWORD_INPUT_SELECTOR = 'input[name="password"]';
 
         await page.goto(LOGIN_URL);
+        
+        rl.close();
 
         const usernameInput = await page.waitForSelector(USERNAME_INPUT_SELECTOR);
         await usernameInput.click();
@@ -119,10 +130,16 @@ function createTextTweet(browser, page, tweetText = '') {
     });
 }
 
-async function initializeTextPosts() {
+async function initializeTextPosts(browser, page) {
     const rl = readline.createInterface({input, output});
-    const postFrequency = await rl.question('Frequency of posts (in minutes): ');
+    const postFrequency = await rl.question('Frequency of posts: ');
+    rl.close();
 
+    
+    setInterval(generatePostCallback, postFrequency, browser, page);
+}
+
+async function generatePostCallback(browser, page) {
     const files = fs.readdirSync('./text_posts/new', {
         withFileTypes: false
     });
@@ -131,8 +148,16 @@ async function initializeTextPosts() {
         return fs.statSync(`./text_posts/new/${a}`).mtime.getTime() - fs.statSync(`./text_posts/new/${b}`).mtime.getTime();
     });
 
-    files.forEach((file) => {
-        console.log(file);
+    const tweetText = await fsp.readFile(`./text_posts/new/${files[0]}`, {encoding: 'utf8'});
+
+    const oldFilePath = `./text_posts/new/${files[0]}`;
+    const newFilePath = `./text_posts/posted/${files[0]}`
+    console.log(oldFilePath, newFilePath);
+    fs.rename(oldFilePath, newFilePath, (err) => {
+        if (err) {
+            console.log('twas an err', err);
+        }
     });
 
+    await createTextTweet(browser, page, tweetText);
 }
