@@ -2,7 +2,7 @@
 
 ## Functionality
 
-The Twitter Manual API uses a (in the future ideally, many) headless browser instance to automate nad peprform twitter interactions.
+The Twitter Manual API uses a headless browser instance to automate and peprform twitter interactions.
 
 ### Text Posts
 
