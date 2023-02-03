@@ -3,7 +3,11 @@ import { stdin as input, stdout as output } from 'node:process';
 import * as fs from 'node:fs';
 import * as fsp from 'node:fs/promises';
 import puppeteer from 'puppeteer';
-import { resolve } from 'node:path';
+
+import {initializePhotoPosts} from './functions/singleImagePost.js';
+import {initializeTextPosts} from './functions/singleTextPost.js';
+
+
 console.log('Imports done...');
 
 /** Constants */
@@ -31,6 +35,8 @@ let isLoggedIn = false;
         case 'text':
             initializeTextPosts(browser, page);
             break;
+        case 'photos':
+            initializePhotoPosts(browser, page);
     }
 })();
 
@@ -47,7 +53,6 @@ function getUserAction() {
             rl.close();
             resolve('photos')
         }
-
     });
 }
 
@@ -113,53 +118,3 @@ function login(browser, page) {
     });
 }
 
-function createTextTweet(browser, page, tweetText = '') {
-    return new Promise(async (resolve) => {
-        setTimeout(async () => {
-            if (tweetText.length <= 0) {
-                tweetText = 'Sample data for automated tweet sans api';
-            }
-            const tweetButton = await page.waitForSelector('[data-testid="SideNav_NewTweet_Button"]');
-            await tweetButton.click();
-
-            const tweetTextField = await page.waitForSelector('.public-DraftEditor-content');
-            await tweetTextField.click();
-            await tweetTextField.type(tweetText);
-
-            const submitTweetButton = await page.waitForSelector('[data-testid="tweetButton"]');
-            await submitTweetButton.click();
-        }, 5000);
-    });
-}
-
-async function initializeTextPosts(browser, page) {
-    const rl = readline.createInterface({input, output});
-    const postFrequency = await rl.question('Frequency of posts: ');
-    rl.close();
-
-    
-    setInterval(generatePostCallback, postFrequency, browser, page);
-}
-
-async function generatePostCallback(browser, page) {
-    const files = fs.readdirSync('./text_posts/new', {
-        withFileTypes: false
-    });
-    
-    files.sort((a, b) => {
-        return fs.statSync(`./text_posts/new/${a}`).mtime.getTime() - fs.statSync(`./text_posts/new/${b}`).mtime.getTime();
-    });
-
-    const tweetText = await fsp.readFile(`./text_posts/new/${files[0]}`, {encoding: 'utf8'});
-
-    const oldFilePath = `./text_posts/new/${files[0]}`;
-    const newFilePath = `./text_posts/posted/${files[0]}`
-    console.log(oldFilePath, newFilePath);
-    fs.rename(oldFilePath, newFilePath, (err) => {
-        if (err) {
-            console.log('twas an err', err);
-        }
-    });
-
-    await createTextTweet(browser, page, tweetText);
-}
