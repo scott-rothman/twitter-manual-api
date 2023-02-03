@@ -31,6 +31,8 @@ let isLoggedIn = false;
         case 'text':
             initializeTextPosts(browser, page);
             break;
+        case 'photos':
+            initializePhotoPosts(browser, page);
     }
 })();
 
@@ -47,7 +49,6 @@ function getUserAction() {
             rl.close();
             resolve('photos')
         }
-
     });
 }
 
@@ -138,10 +139,10 @@ async function initializeTextPosts(browser, page) {
     rl.close();
 
     
-    setInterval(generatePostCallback, postFrequency, browser, page);
+    setInterval(generateTextPostCB, postFrequency, browser, page);
 }
 
-async function generatePostCallback(browser, page) {
+async function generateTextPostCB(browser, page) {
     const files = fs.readdirSync('./text_posts/new', {
         withFileTypes: false
     });
@@ -162,4 +163,58 @@ async function generatePostCallback(browser, page) {
     });
 
     await createTextTweet(browser, page, tweetText);
+}
+
+function createPhotoTweet(browser, page, imagePath) {
+    return new Promise(async (resolve) => {
+        setTimeout(async () => {
+            if (tweetText.length <= 0) {
+                tweetText = 'Sample data for automated tweet sans api';
+            }
+            const tweetButton = await page.waitForSelector('[data-testid="SideNav_NewTweet_Button"]');
+            await tweetButton.click();
+
+            const uploadPhotoButton = await page.waitForSelector('aria/Add photos or video');
+            const [photoFileChooser] = await Promise.all([
+                page.waitForFileChooser(),
+                uploadPhotoButton.click(),
+            ]);
+
+            await photoFileChooser.accept([imagePath]);
+
+            const submitTweetButton = await page.waitForSelector('[data-testid="tweetButton"]');
+            await submitTweetButton.click();
+        }, 5000);
+    });
+}
+
+async function initializePhotoPosts(browser, page) {
+    const rl = readline.createInterface({input, output});
+    const postFrequency = await rl.question('Frequency of posts: ');
+    rl.close();
+
+    
+    setInterval(generatePhotoPostCB, postFrequency, browser, page);
+}
+
+async function generatePhotoPostCB(browser, page) {
+    const files = fs.readdirSync('./image_posts/new', {
+        withFileTypes: false
+    });
+    
+    files.sort((a, b) => {
+        return fs.statSync(`./image_posts/new/${a}`).mtime.getTime() - fs.statSync(`./image_posts/new/${b}`).mtime.getTime();
+    });
+
+
+    const oldFilePath = `./image_posts/new/${files[0]}`;
+    const newFilePath = `./image_posts/posted/${files[0]}`
+    console.log(oldFilePath, newFilePath);
+    fs.rename(oldFilePath, newFilePath, (err) => {
+        if (err) {
+            console.log('twas an err', err);
+        }
+    });
+
+    await createPhotoTweet(browser, page, oldFilePath);
 }
