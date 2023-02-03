@@ -3,7 +3,11 @@ import { stdin as input, stdout as output } from 'node:process';
 import * as fs from 'node:fs';
 import * as fsp from 'node:fs/promises';
 import puppeteer from 'puppeteer';
-import { resolve } from 'node:path';
+
+import {initializePhotoPosts} from './functions/singleImagePost.js';
+import {initializeTextPosts} from './functions/singleTextPost.js';
+
+
 console.log('Imports done...');
 
 /** Constants */
@@ -114,110 +118,3 @@ function login(browser, page) {
     });
 }
 
-function createTextTweet(browser, page, tweetText = '') {
-    return new Promise(async (resolve) => {
-        if (tweetText.length <= 0) {
-            tweetText = 'Sample data for automated tweet sans api';
-        }
-        const tweetButton = await page.waitForSelector('[data-testid="SideNav_NewTweet_Button"]');
-        await tweetButton.click();
-
-        const tweetTextField = await page.waitForSelector('.public-DraftEditor-content');
-        await tweetTextField.click();
-        await tweetTextField.type(tweetText);
-
-        const submitTweetButton = await page.waitForSelector('[data-testid="tweetButton"]');
-        await submitTweetButton.click();
-
-        await page.waitForNetworkIdle();
-        resolve();
-    });
-}
-
-async function initializeTextPosts(browser, page) {
-    const rl = readline.createInterface({input, output});
-    const postFrequency = await rl.question('Frequency of posts: ');
-    rl.close();
-
-    
-    setInterval(generateTextPostCB, postFrequency, browser, page);
-}
-
-async function generateTextPostCB(browser, page) {
-    const files = fs.readdirSync('./text_posts/new', {
-        withFileTypes: false
-    });
-    
-    files.sort((a, b) => {
-        return fs.statSync(`./text_posts/new/${a}`).mtime.getTime() - fs.statSync(`./text_posts/new/${b}`).mtime.getTime();
-    });
-
-    const tweetText = await fsp.readFile(`./text_posts/new/${files[0]}`, {encoding: 'utf8'});
-
-    await createTextTweet(browser, page, tweetText);
-
-    const oldFilePath = `./text_posts/new/${files[0]}`;
-    const newFilePath = `./text_posts/posted/${files[0]}`
-    console.log(oldFilePath, newFilePath);
-    fs.rename(oldFilePath, newFilePath, (err) => {
-        if (err) {
-            console.log('twas an err', err);
-        }
-    });
-}
-
-function createPhotoTweet(browser, page, imagePath) {
-    return new Promise(async (resolve) => {
-
-        const tweetButton = await page.waitForSelector('[data-testid="SideNav_NewTweet_Button"]');
-        await tweetButton.click();
-
-        const uploadPhotoButton = await page.waitForSelector('aria/Add photos or video');
-        const [photoFileChooser] = await Promise.all([
-            page.waitForFileChooser(),
-            uploadPhotoButton.click(),
-        ]);
-
-        await photoFileChooser.accept([imagePath]);
-
-        const submitTweetButton = await page.waitForSelector('[data-testid="tweetButton"]');
-        await submitTweetButton.click();
-
-        await page.waitForNetworkIdle();
-        resolve();
-    });
-}
-
-async function initializePhotoPosts(browser, page) {
-    const rl = readline.createInterface({input, output});
-    const postFrequency = await rl.question('Frequency of posts: ');
-    rl.close();
-
-    
-    setInterval(generatePhotoPostCB, postFrequency, browser, page);
-}
-
-async function generatePhotoPostCB(browser, page) {
-    const files = fs.readdirSync('./image_posts/new', {
-        withFileTypes: false
-    });
-    
-    files.sort((a, b) => {
-        return fs.statSync(`./image_posts/new/${a}`).mtime.getTime() - fs.statSync(`./image_posts/new/${b}`).mtime.getTime();
-    });
-
-
-    const oldFilePath = `./image_posts/new/${files[0]}`;
-    const newFilePath = `./image_posts/posted/${files[0]}`
-    console.log(oldFilePath, newFilePath);
-
-    console.log('posting!');
-    await createPhotoTweet(browser, page, oldFilePath);
-
-    console.log('renaming!');
-    fs.rename(oldFilePath, newFilePath, (err) => {
-        if (err) {
-            console.log('twas an err', err);
-        }
-    });
-}
